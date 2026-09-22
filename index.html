@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>개구리 뛰어넘기 퍼즐 (Frog Leap Game)</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Jua & Noto Sans KR -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .font-game {
+      font-family: 'Jua', cursive;
+    }
+
+    /* 잔잔한 연못 물결 배경 애니메이션 */
+    .pond-bg {
+      background: linear-gradient(180deg, #6ee7b7 0%, #38bdf8 40%, #0284c7 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ripple {
+      position: absolute;
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      border-radius: 50%;
+      animation: rippleEffect 6s infinite ease-out;
+      pointer-events: none;
+    }
+    @keyframes rippleEffect {
+      0% { transform: scale(0.6); opacity: 0.8; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+
+    /* 개구리 점프 키프레임 */
+    @keyframes jumpRight {
+      0% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(40px, -45px) scale(1.15) rotate(10deg); }
+      100% { transform: translate(0, 0) scale(1); }
+    }
+    @keyframes jumpLeft {
+      0% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(-40px, -45px) scale(1.15) rotate(-10deg); }
+      100% { transform: translate(0, 0) scale(1); }
+    }
+    .jumping-right {
+      animation: jumpRight 0.28s ease-in-out;
+    }
+    .jumping-left {
+      animation: jumpLeft 0.28s ease-in-out;
+    }
+
+    /* 물결 튀김 및 호버 흔들림 */
+    .frog-card:hover:not(:disabled) .frog-sprite {
+      transform: translateY(-4px) scale(1.06);
+    }
+  </style>
+</head>
+<body class="pond-bg min-h-screen text-slate-800 flex flex-col items-center justify-between p-3 sm:p-6">
+  <div class="ripple w-64 h-32 top-10 left-10" style="animation-delay: 0s;"></div>
+  <div class="ripple w-80 h-40 bottom-16 right-12" style="animation-delay: 2.5s;"></div>
+  <div class="ripple w-48 h-24 top-1/2 left-1/3" style="animation-delay: 4.2s;"></div>
+
+  <header class="w-full max-w-4xl bg-white/85 backdrop-blur-md rounded-2xl shadow-xl px-4 py-3 sm:px-6 sm:py-4 flex flex-wrap items-center justify-between gap-3 border border-white/60 z-10">
+    <div class="flex items-center gap-2">
+      <span class="text-3xl">🐸</span>
+      <div>
+        <h1 class="text-xl sm:text-2xl font-game tracking-wide text-emerald-800">개구리 뛰어넘기 챌린지</h1>
+        <p class="text-xs sm:text-sm text-slate-500 font-medium">양쪽 개구리의 자리를 모두 맞바꿔보세요!</p>
+      </div>
+    </div>
+
+    <!-- 스코어보드 & 조작 버튼 -->
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
+        <span class="text-xs text-emerald-700 font-bold">이동 횟수</span>
+        <span id="moveCount" class="font-game text-xl text-emerald-900">0</span>
+        <span class="text-[10px] text-slate-400 font-semibold">(최소 15수)</span>
+      </div>
+
+      <button id="rulesBtn" class="bg-amber-100 hover:bg-amber-200 text-amber-900 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-1 shadow-sm">
+        ❓ 규칙
+      </button>
+
+      <button id="resetBtn" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition flex items-center gap-1">
+        🔄 다시 시작
+      </button>
+    </div>
+  </header>
+
+  <main class="w-full max-w-5xl my-auto py-6 sm:py-10 z-10 flex flex-col items-center">
+    <!-- 연못 안내 배너 -->
+    <div id="statusBanner" class="mb-6 px-4 py-2 rounded-full text-xs sm:text-sm font-semibold text-slate-700 bg-white/70 shadow-sm border border-white/70 backdrop-blur-sm transition-all text-center">
+      초록 개구리는 <span class="text-emerald-700 font-bold">오른쪽(👉)</span>으로, 빨간 개구리는 <span class="text-rose-700 font-bold">왼쪽(👈)</span>으로만 전진합니다!
+    </div>
+
+    <!-- 7개의 연잎과 개구리 배치 슬롯 -->
+    <div class="w-full overflow-x-auto pb-4 pt-6 px-2 flex justify-center">
+      <div id="pondTrack" class="grid grid-cols-7 gap-1.5 sm:gap-4 md:gap-6 min-w-[560px] max-w-4xl w-full px-2">
+        <!-- JS를 통해 7개의 연잎과 개구리가 렌더링됩니다 -->
+      </div>
+    </div>
+  </main>
+
+  <footer class="w-full max-w-4xl text-center text-xs text-white/90 font-medium py-2 z-10 drop-shadow">
+    💡 팁: 빈 연잎으로 1칸 걷거나, 앞의 다른 개구리를 1마리 밟고 2칸 뛰어넘을 수 있습니다.
+  </footer>
+
+  <!-- 승리 모달 -->
+  <div id="winModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
+    <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl text-center border-4 border-amber-300 transform scale-95 transition-all">
+      <div class="text-6xl mb-3">🎉🏆🎉</div>
+      <h2 class="text-2xl sm:text-3xl font-game text-emerald-800 mb-2">성공! 축하합니다!</h2>
+      <p class="text-sm text-slate-600 mb-4">
+        모든 개구리가 반대편 연잎으로 완벽하게 이동했습니다!
+      </p>
+      <div class="bg-emerald-50 rounded-xl p-3 mb-6 inline-block w-full border border-emerald-200">
+        <p class="text-xs text-slate-500">내 이동 횟수</p>
+        <p class="font-game text-3xl text-emerald-700"><span id="finalMoves">0</span> <span class="text-lg text-slate-600 font-normal">회 (최적해: 15회)</span></p>
+      </div>
+      <button onclick="resetGame()" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-lg transition">
+        한 번 더 도전하기
+      </button>
+    </div>
+  </div>
+
+  <!-- 이동 불가(교착 상태) 모달 안내 박스 -->
+  <div id="deadlockBanner" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-rose-600 text-white px-5 py-3 rounded-2xl shadow-2xl border-2 border-rose-300 hidden z-40 flex items-center gap-3 text-sm font-bold">
+    <span>⚠️ 더 이상 움직일 수 있는 개구리가 없습니다!</span>
+    <button onclick="resetGame()" class="bg-white text-rose-700 px-3 py-1 rounded-lg text-xs font-black hover:bg-rose-50 transition">
+      다시 시도
+    </button>
+  </div>
+
+  <!-- 규칙 설명 모달 -->
+  <div id="rulesModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
+    <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl text-slate-700 border border-slate-200">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="font-game text-xl text-slate-800 flex items-center gap-2"><span>📖</span> 퍼즐 규칙</h3>
+        <button id="closeRulesBtn" class="text-slate-400 hover:text-slate-700 text-xl font-bold">✕</button>
+      </div>
+      <ul class="text-xs sm:text-sm space-y-2 text-slate-600 list-disc list-inside bg-slate-50 p-3 rounded-xl mb-4">
+        <li><strong>초록 개구리(좌측 3마리):</strong> 오직 <span class="text-emerald-700 font-bold">오른쪽(👉)</span>으로만 전진합니다.</li>
+        <li><strong>빨간 개구리(우측 3마리):</strong> 오직 <span class="text-rose-700 font-bold">왼쪽(👈)</span>으로만 전진합니다.</li>
+        <li><strong>1칸 이동:</strong> 바로 앞 칸이 빈 연잎이면 1칸 전진합니다.</li>
+        <li><strong>1칸 점프:</strong> 바로 앞에 개구리가 있고, 그 바로 다음 칸이 비어있으면 1마리를 뛰어넘어 착지할 수 있습니다.</li>
+        <li><strong>금지:</strong> 뒤로 후진하거나 2마리 이상을 한 번에 뛰어넘을 수 없습니다.</li>
+      </ul>
+      <button onclick="document.getElementById('rulesModal').classList.add('hidden')" class="w-full py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-sm font-bold transition">
+        확인
+      </button>
+    </div>
+  </div>
+
+  <script>
+    /*
+      상태 정의:
+      'G' = Green Frog (초록 개구리, 오른쪽 방향)
+      'R' = Red Frog (빨간 개구리, 왼쪽 방향)
+      null = 빈 연잎
+    */
+    const INITIAL_STATE = ['G', 'G', 'G', null, 'R', 'R', 'R'];
+    const WIN_STATE = ['R', 'R', 'R', null, 'G', 'G', 'G'];
+
+    let state = [...INITIAL_STATE];
+    let moves = 0;
+    let isGameOver = false;
+    let isAnimating = false;
+
+    // SVG 그래픽 에셋 (초록 개구리, 빨간 개구리, 연잎)
+    const FROG_GREEN_SVG = `
+      <svg viewBox="0 0 100 100" class="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 drop-shadow-md">
+        <!-- 뒤다리 -->
+        <ellipse cx="25" cy="70" rx="14" ry="10" fill="#15803d" />
+        <ellipse cx="75" cy="70" rx="14" ry="10" fill="#15803d" />
+        <!-- 몸통 -->
+        <ellipse cx="50" cy="58" rx="34" ry="26" fill="#22c55e" stroke="#16a34a" stroke-width="3" />
+        <!-- 배 -->
+        <ellipse cx="50" cy="62" rx="20" ry="16" fill="#bbf7d0" />
+        <!-- 앞발 -->
+        <circle cx="36" cy="80" r="5" fill="#15803d" />
+        <circle cx="64" cy="80" r="5" fill="#15803d" />
+        <!-- 눈받침 -->
+        <circle cx="35" cy="33" r="14" fill="#22c55e" stroke="#16a34a" stroke-width="3" />
+        <circle cx="65" cy="33" r="14" fill="#22c55e" stroke="#16a34a" stroke-width="3" />
+        <!-- 눈알구 흰자 -->
+        <circle cx="35" cy="33" r="10" fill="#ffffff" />
+        <circle cx="65" cy="33" r="10" fill="#ffffff" />
+        <!-- 눈동자 (오른쪽 응시) -->
+        <circle cx="39" cy="33" r="5" fill="#0f172a" />
+        <circle cx="69" cy="33" r="5" fill="#0f172a" />
+        <circle cx="41" cy="31" r="1.5" fill="#ffffff" />
+        <circle cx="71" cy="31" r="1.5" fill="#ffffff" />
+        <!-- 볼터치 -->
+        <ellipse cx="28" cy="50" rx="5" ry="3" fill="#f472b6" opacity="0.6"/>
+        <ellipse cx="72" cy="50" rx="5" ry="3" fill="#f472b6" opacity="0.6"/>
+        <!-- 입 -->
+        <path d="M 42 54 Q 50 62 58 54" stroke="#166534" stroke-width="3" fill="none" stroke-linecap="round"/>
+      </svg>
+    `;
+
+    const FROG_RED_SVG = `
+      <svg viewBox="0 0 100 100" class="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 drop-shadow-md">
+        <!-- 뒤다리 -->
+        <ellipse cx="25" cy="70" rx="14" ry="10" fill="#be123c" />
+        <ellipse cx="75" cy="70" rx="14" ry="10" fill="#be123c" />
+        <!-- 몸통 -->
+        <ellipse cx="50" cy="58" rx="34" ry="26" fill="#f43f5e" stroke="#e11d48" stroke-width="3" />
+        <!-- 배 -->
+        <ellipse cx="50" cy="62" rx="20" ry="16" fill="#fecdd3" />
+        <!-- 앞발 -->
+        <circle cx="36" cy="80" r="5" fill="#9f1239" />
+        <circle cx="64" cy="80" r="5" fill="#9f1239" />
+        <!-- 눈받침 -->
+        <circle cx="35" cy="33" r="14" fill="#f43f5e" stroke="#e11d48" stroke-width="3" />
+        <circle cx="65" cy="33" r="14" fill="#f43f5e" stroke="#e11d48" stroke-width="3" />
+        <!-- 눈알구 흰자 -->
+        <circle cx="35" cy="33" r="10" fill="#ffffff" />
+        <circle cx="65" cy="33" r="10" fill="#ffffff" />
+        <!-- 눈동자 (왼쪽 응시) -->
+        <circle cx="31" cy="33" r="5" fill="#0f172a" />
+        <circle cx="61" cy="33" r="5" fill="#0f172a" />
+        <circle cx="29" cy="31" r="1.5" fill="#ffffff" />
+        <circle cx="59" cy="31" r="1.5" fill="#ffffff" />
+        <!-- 볼터치 -->
+        <ellipse cx="28" cy="50" rx="5" ry="3" fill="#fbbf24" opacity="0.6"/>
+        <ellipse cx="72" cy="50" rx="5" ry="3" fill="#fbbf24" opacity="0.6"/>
+        <!-- 입 -->
+        <path d="M 42 54 Q 50 62 58 54" stroke="#881337" stroke-width="3" fill="none" stroke-linecap="round"/>
+      </svg>
+    `;
+
+    const pondTrack = document.getElementById('pondTrack');
+    const moveCountDisplay = document.getElementById('moveCount');
+    const deadlockBanner = document.getElementById('deadlockBanner');
+    const winModal = document.getElementById('winModal');
+    const finalMoves = document.getElementById('finalMoves');
+
+    function renderBoard() {
+      pondTrack.innerHTML = '';
+
+      state.forEach((slot, index) => {
+        // 연잎 컨테이너 버튼
+        const padBtn = document.createElement('button');
+        padBtn.className = 'frog-card flex flex-col items-center justify-end relative h-36 sm:h-44 md:h-52 cursor-pointer transition focus:outline-none';
+        padBtn.setAttribute('data-index', index);
+
+        // 유효한 이동이 가능한지 확인
+        const canMove = isValidMove(index) !== false;
+        if (!canMove && slot !== null) {
+          padBtn.classList.add('opacity-90');
+        }
+
+        // 개구리 요소
+        let frogContent = '';
+        if (slot === 'G') {
+          frogContent = `
+            <div id="frog-${index}" class="frog-sprite transition-transform duration-200 z-20 mb-[-12px] sm:mb-[-16px]">
+              ${FROG_GREEN_SVG}
+            </div>
+          `;
+        } else if (slot === 'R') {
+          frogContent = `
+            <div id="frog-${index}" class="frog-sprite transition-transform duration-200 z-20 mb-[-12px] sm:mb-[-16px]">
+              ${FROG_RED_SVG}
+            </div>
+          `;
+        } else {
+          frogContent = `
+            <div class="h-12 sm:h-16 md:h-20 w-full flex items-center justify-center">
+              <span class="text-xs text-emerald-900/40 font-bold">빈 칸</span>
+            </div>
+          `;
+        }
+
+        // 연잎 바닥 그래픽 (SVG)
+        const lilyPadSVG = `
+          <div class="w-full relative flex justify-center z-10">
+            <svg viewBox="0 0 100 48" class="w-full max-w-[100px] drop-shadow-lg">
+              <ellipse cx="50" cy="24" rx="46" ry="18" fill="#10b981" stroke="#059669" stroke-width="2.5" />
+              <!-- 연잎 결 표현 -->
+              <path d="M 50 24 L 90 20" stroke="#047857" stroke-width="1.5" stroke-linecap="round" />
+              <path d="M 50 24 L 75 36" stroke="#047857" stroke-width="1.5" stroke-linecap="round" />
+              <path d="M 50 24 L 25 36" stroke="#047857" stroke-width="1.5" stroke-linecap="round" />
+              <path d="M 50 24 L 10 20" stroke="#047857" stroke-width="1.5" stroke-linecap="round" />
+              <path d="M 50 24 L 38 10" stroke="#047857" stroke-width="1.5" stroke-linecap="round" />
+              <!-- 홈(파임) -->
+              <polygon points="50,24 60,6 40,6" fill="#38bdf8" opacity="0.6"/>
+            </svg>
+          </div>
+        `;
+
+        padBtn.innerHTML = frogContent + lilyPadSVG;
+
+        // 클릭 이벤트 연결
+        padBtn.addEventListener('click', () => handleSlotClick(index));
+
+        pondTrack.appendChild(padBtn);
+      });
+
+      moveCountDisplay.textContent = moves;
+      checkGameState();
+    }
+
+    // 특정 슬롯의 개구리가 이동 가능한 타겟 인덱스 반환 (불가 시 false)
+    function isValidMove(idx) {
+      if (isGameOver || isAnimating) return false;
+      const type = state[idx];
+      if (!type) return false;
+
+      // 초록 개구리: 오른쪽(index 증가 방향)으로만 이동
+      if (type === 'G') {
+        if (idx + 1 < state.length && state[idx + 1] === null) {
+          return idx + 1; // 바로 앞 1칸 이동
+        }
+        if (idx + 2 < state.length && state[idx + 2] === null) {
+          return idx + 2; // 1마리 뛰어넘기
+        }
+      }
+
+      // 빨간 개구리: 왼쪽(index 감소 방향)으로만 이동
+      if (type === 'R') {
+        if (idx - 1 >= 0 && state[idx - 1] === null) {
+          return idx - 1; // 바로 앞 1칸 이동
+        }
+        if (idx - 2 >= 0 && state[idx - 2] === null) {
+          return idx - 2; // 1마리 뛰어넘기
+        }
+      }
+
+      return false;
+    }
+
+    function handleSlotClick(idx) {
+      if (isGameOver || isAnimating) return;
+      const targetIdx = isValidMove(idx);
+
+      if (targetIdx !== false) {
+        isAnimating = true;
+        const frogElement = document.getElementById(`frog-${idx}`);
+        const directionClass = targetIdx > idx ? 'jumping-right' : 'jumping-left';
+
+        if (frogElement) {
+          frogElement.classList.add(directionClass);
+        }
+
+        setTimeout(() => {
+          // 상태 갱신 (스왑)
+          state[targetIdx] = state[idx];
+          state[idx] = null;
+          moves++;
+          isAnimating = false;
+          renderBoard();
+        }, 220);
+      }
+    }
+
+    function checkGameState() {
+      // 1. 승리 여부 확인: ['R', 'R', 'R', null, 'G', 'G', 'G']
+      const isWon = state.every((val, i) => val === WIN_STATE[i]);
+      if (isWon) {
+        isGameOver = true;
+        finalMoves.textContent = moves;
+        setTimeout(() => {
+          winModal.classList.remove('hidden');
+        }, 300);
+        return;
+      }
+
+      // 2. 이동 가능 여부(교착 상태) 확인
+      let hasValidMove = false;
+      for (let i = 0; i < state.length; i++) {
+        if (isValidMove(i) !== false) {
+          hasValidMove = true;
+          break;
+        }
+      }
+
+      if (!hasValidMove) {
+        deadlockBanner.classList.remove('hidden');
+      } else {
+        deadlockBanner.classList.add('hidden');
+      }
+    }
+
+    // 게임 리셋 함수
+    function resetGame() {
+      state = [...INITIAL_STATE];
+      moves = 0;
+      isGameOver = false;
+      isAnimating = false;
+      deadlockBanner.classList.add('hidden');
+      winModal.classList.add('hidden');
+      renderBoard();
+    }
+
+    document.getElementById('resetBtn').addEventListener('click', resetGame);
+
+    const rulesBtn = document.getElementById('rulesBtn');
+    const closeRulesBtn = document.getElementById('closeRulesBtn');
+    const rulesModal = document.getElementById('rulesModal');
+
+    rulesBtn.addEventListener('click', () => rulesModal.classList.remove('hidden'));
+    closeRulesBtn.addEventListener('click', () => rulesModal.classList.add('hidden'));
+
+    // 초기 실행
+    window.addEventListener('DOMContentLoaded', () => {
+      renderBoard();
+    });
+  </script>
+</body>
+</html>
